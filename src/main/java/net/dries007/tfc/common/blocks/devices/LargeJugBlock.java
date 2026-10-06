@@ -24,11 +24,12 @@ import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelAccessor;
+import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.Mirror;
 import net.minecraft.world.level.block.Rotation;
-import net.minecraft.world.level.block.SupportType;
+import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
@@ -38,14 +39,12 @@ import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
 import net.minecraftforge.common.Tags;
-import net.minecraftforge.fluids.capability.IFluidHandler;
 import net.minecraftforge.fluids.capability.templates.FluidTank;
 import org.jetbrains.annotations.Nullable;
 
 import net.dries007.tfc.common.blockentities.LargeJugBlockEntity;
 import net.dries007.tfc.common.blockentities.TFCBlockEntities;
 import net.dries007.tfc.common.blocks.ExtendedProperties;
-import net.dries007.tfc.common.capabilities.Capabilities;
 import net.dries007.tfc.common.fluids.FluidHelpers;
 import net.dries007.tfc.config.TFCConfig;
 import net.dries007.tfc.util.Helpers;
@@ -61,9 +60,9 @@ public class LargeJugBlock extends SealableDeviceBlock
         box(6, 7, 6, 10, 14, 10)
     );
 
-    public static void toggleSeal(Level level, BlockPos pos, BlockState state)
+    public static <T extends LargeJugBlockEntity> void toggleSeal(Level level, BlockPos pos, BlockState state, BlockEntityType<T> type)
     {
-        level.getBlockEntity(pos, TFCBlockEntities.LARGE_JUG.get()).ifPresent(jug -> {
+        level.getBlockEntity(pos, type).ifPresent(jug -> {
             final boolean previousSealed = state.getValue(SEALED);
             level.setBlockAndUpdate(pos, state.setValue(SEALED, !previousSealed));
 
@@ -77,7 +76,7 @@ public class LargeJugBlock extends SealableDeviceBlock
             }
         });
     }
-
+    
     private static final int[] IMAGE_TOOLTIP = {1, 1, 2, 2};
 
     public LargeJugBlock(ExtendedProperties properties)
@@ -99,7 +98,7 @@ public class LargeJugBlock extends SealableDeviceBlock
             final ItemStack stack = player.getItemInHand(hand);
             if (stack.isEmpty() && player.isShiftKeyDown())
             {
-                toggleSeal(level, pos, state);
+                toggleSeal(level, pos, state, getExtendedProperties().blockEntity());
                 level.playSound(null, pos, SoundEvents.WOOD_PLACE, SoundSource.BLOCKS, 1.0f, 0.85f);
                 return InteractionResult.SUCCESS;
             }
@@ -129,14 +128,17 @@ public class LargeJugBlock extends SealableDeviceBlock
 
     @Override
     @SuppressWarnings("deprecation")
+    public boolean canSurvive(BlockState state, LevelReader level, BlockPos pos)
+    {
+        return BottomSupportedDeviceBlock.canSurvive(level, pos);
+    }
+
+    @Override
+    @SuppressWarnings("deprecation")
     public BlockState updateShape(BlockState state, Direction facing, BlockState facingState, LevelAccessor level, BlockPos pos, BlockPos facingPos)
     {
         // Require a supporting block below.
-        if (facing == Direction.DOWN && !level.getBlockState(facingPos).isFaceSturdy(level, facingPos, Direction.UP, SupportType.CENTER))
-        {
-            return Blocks.AIR.defaultBlockState();
-        }
-        return state;
+        return canSurvive(state, level, pos) ? super.updateShape(state, facing, facingState, level, pos, facingPos) : Blocks.AIR.defaultBlockState();
     }
 
     @Override
@@ -149,21 +151,8 @@ public class LargeJugBlock extends SealableDeviceBlock
     @Override
     public BlockState getStateForPlacement(BlockPlaceContext context)
     {
-        BlockState state = super.getStateForPlacement(context);
-        if (state != null)
-        {
-            state = state.setValue(FACING, context.getHorizontalDirection().getOpposite());
-
-            final Level level = context.getLevel();
-            final BlockPos pos = context.getClickedPos();
-
-            // Require a supporting block below.
-            if (!level.getBlockState(pos.below()).isFaceSturdy(level, pos.below(), Direction.UP, SupportType.CENTER))
-            {
-                return null;
-            }
-        }
-        return state;
+        final BlockState state = super.getStateForPlacement(context);
+        return state != null ? state.setValue(FACING, context.getHorizontalDirection().getOpposite()) : null;
     }
 
     @Override
