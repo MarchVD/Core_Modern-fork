@@ -16,7 +16,6 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.tags.ItemTags;
-import net.minecraft.util.Mth;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
@@ -28,15 +27,12 @@ import net.minecraft.world.level.LevelAccessor;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.Mirror;
-import net.minecraft.world.level.block.NoteBlock;
 import net.minecraft.world.level.block.Rotation;
 import net.minecraft.world.level.block.SupportType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
-import net.minecraft.world.level.block.state.properties.BooleanProperty;
-import net.minecraft.world.level.block.state.properties.EnumProperty;
-import net.minecraft.world.level.material.Fluid;
-import net.minecraft.world.level.material.FluidState;
+import net.minecraft.world.level.block.state.properties.BlockStateProperties;
+import net.minecraft.world.level.block.state.properties.DirectionProperty;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.Shapes;
@@ -44,22 +40,27 @@ import net.minecraft.world.phys.shapes.VoxelShape;
 import net.minecraftforge.common.Tags;
 import net.minecraftforge.fluids.capability.IFluidHandler;
 import net.minecraftforge.fluids.capability.templates.FluidTank;
-import net.minecraftforge.items.ItemHandlerHelper;
 import org.jetbrains.annotations.Nullable;
 
 import net.dries007.tfc.common.blockentities.LargeJugBlockEntity;
 import net.dries007.tfc.common.blockentities.TFCBlockEntities;
 import net.dries007.tfc.common.blocks.ExtendedProperties;
-import net.dries007.tfc.common.blocks.TFCBlockStateProperties;
-import net.dries007.tfc.common.blocks.TFCBlocks;
 import net.dries007.tfc.common.capabilities.Capabilities;
 import net.dries007.tfc.common.fluids.FluidHelpers;
 import net.dries007.tfc.config.TFCConfig;
 import net.dries007.tfc.util.Helpers;
 import net.dries007.tfc.util.Tooltips;
 
-public class JugBlock extends SealableDeviceBlock
+public class LargeJugBlock extends SealableDeviceBlock
 {
+    public static final DirectionProperty FACING = BlockStateProperties.HORIZONTAL_FACING;
+    public static final VoxelShape SHAPE = Shapes.or(
+        box(4, 0, 4, 12, 1, 12),
+        box(3, 1, 3, 13, 6, 13),
+        box(4, 6, 4, 12, 7, 12),
+        box(6, 7, 6, 10, 14, 10)
+    );
+
     public static void toggleSeal(Level level, BlockPos pos, BlockState state)
     {
         level.getBlockEntity(pos, TFCBlockEntities.LARGE_JUG.get()).ifPresent(jug -> {
@@ -77,31 +78,14 @@ public class JugBlock extends SealableDeviceBlock
         });
     }
 
-    public static final VoxelShape SHAPE_Z = box(2, 0, 0, 14, 12, 16);
-    public static final VoxelShape SHAPE_X = box(0, 0, 2, 16, 12, 14);
-    public static final VoxelShape RACK_SHAPE = Shapes.or(
-        box(0, 0, 0, 2, 16, 2),
-        box(14, 0, 14, 16, 16, 16),
-        box(14, 0, 0, 16, 16, 2),
-        box(0, 0, 14, 2, 16, 16),
-        box(0, 14, 0, 16, 16, 16)
-    );
-    public static final VoxelShape SHAPE_Z_RACK = Shapes.or(SHAPE_Z, RACK_SHAPE);
-    public static final VoxelShape SHAPE_X_RACK = Shapes.or(SHAPE_X, RACK_SHAPE);
-
-    // not down
-    public static final EnumProperty<Direction> FACING = TFCBlockStateProperties.FACING_NOT_DOWN;
-    public static final BooleanProperty RACK = TFCBlockStateProperties.RACK;
-
     private static final int[] IMAGE_TOOLTIP = {1, 1, 2, 2};
 
-    public JugBlock(ExtendedProperties properties)
+    public LargeJugBlock(ExtendedProperties properties)
     {
         super(properties);
         registerDefaultState(getStateDefinition().any()
             .setValue(SEALED, false)
-            .setValue(FACING, Direction.UP)
-            .setValue(RACK, false)
+            .setValue(FACING, Direction.NORTH)
             .setValue(POWERED, false));
     }
 
@@ -115,27 +99,9 @@ public class JugBlock extends SealableDeviceBlock
             final ItemStack stack = player.getItemInHand(hand);
             if (stack.isEmpty() && player.isShiftKeyDown())
             {
-                if (state.getValue(RACK) && level.getBlockState(pos.above()).isAir() && hit.getLocation().y - pos.getY() > 0.875f)
-                {
-                    ItemHandlerHelper.giveItemToPlayer(player, new ItemStack(TFCBlocks.BARREL_RACK.get().asItem()));
-                    level.setBlockAndUpdate(pos, state.setValue(RACK, false));
-                }
-                else
-                {
-                    toggleSeal(level, pos, state);
-                }
+                toggleSeal(level, pos, state);
                 level.playSound(null, pos, SoundEvents.WOOD_PLACE, SoundSource.BLOCKS, 1.0f, 0.85f);
                 return InteractionResult.SUCCESS;
-            }
-            else if (Helpers.isItem(stack, TFCBlocks.BARREL_RACK.get().asItem()) && state.getValue(FACING) != Direction.UP && !state.getValue(RACK))
-            {
-                if (!player.isCreative())
-                {
-                    stack.shrink(1);
-                }
-                level.setBlockAndUpdate(pos, state.setValue(RACK, true).setValue(FACING, player.getDirection().getOpposite()));
-                Helpers.playPlaceSound(level, pos, state);
-                return InteractionResult.sidedSuccess(level.isClientSide);
             }
             else if (FluidHelpers.transferBetweenBlockEntityAndItem(stack, jug, player, hand))
             {
@@ -151,25 +117,9 @@ public class JugBlock extends SealableDeviceBlock
     }
 
     @Override
-    @SuppressWarnings("deprecation")
-    public void attack(BlockState state, Level level, BlockPos pos, Player player)
-    {
-        if (state.getValue(SEALED) && level.getBlockEntity(pos) instanceof LargeJugBlockEntity jug && Helpers.isItem(player.getMainHandItem(), Tags.Items.RODS_WOODEN))
-        {
-            final IFluidHandler tank = Helpers.getCapability(jug, Capabilities.FLUID);
-            if (tank != null)
-            {
-                final float fill = (float) tank.getFluidInTank(0).getAmount() / tank.getTankCapacity(0);
-                final int note = Mth.ceil(fill * 24); // note blocks are 0 -> 24
-                level.playSeededSound(null, pos.getX() + 0.5D, pos.getY() + 0.5D, pos.getZ() + 0.5D, SoundEvents.NOTE_BLOCK_BASEDRUM, SoundSource.RECORDS, 3.0F, NoteBlock.getPitchFromNote(note), level.random.nextLong());
-            }
-        }
-    }
-
-    @Override
     protected void addExtraInfo(List<Component> tooltip, CompoundTag inventoryTag)
     {
-        final FluidTank tank = new FluidTank(TFCConfig.SERVER.barrelCapacity.get());
+        final FluidTank tank = new FluidTank(TFCConfig.SERVER.largeJugCapacity.get());
         tank.readFromNBT(inventoryTag.getCompound("tank"));
         if (!tank.isEmpty())
         {
@@ -181,7 +131,8 @@ public class JugBlock extends SealableDeviceBlock
     @SuppressWarnings("deprecation")
     public BlockState updateShape(BlockState state, Direction facing, BlockState facingState, LevelAccessor level, BlockPos pos, BlockPos facingPos)
     {
-        if (state.getValue(FACING).getAxis().isHorizontal() && facing == Direction.DOWN && !level.getBlockState(facingPos).isFaceSturdy(level, facingPos, Direction.UP, SupportType.CENTER))
+        // Require a supporting block below.
+        if (facing == Direction.DOWN && !level.getBlockState(facingPos).isFaceSturdy(level, facingPos, Direction.UP, SupportType.CENTER))
         {
             return Blocks.AIR.defaultBlockState();
         }
@@ -201,23 +152,12 @@ public class JugBlock extends SealableDeviceBlock
         BlockState state = super.getStateForPlacement(context);
         if (state != null)
         {
-            Direction dir = context.getClickedFace();
-            if (dir == Direction.DOWN)
-            {
-                dir = Direction.UP;
-            }
-            state = state.setValue(FACING, dir);
+            state = state.setValue(FACING, context.getHorizontalDirection().getOpposite());
 
             final Level level = context.getLevel();
             final BlockPos pos = context.getClickedPos();
 
-            // case of replacing a jug rack block
-            if (Helpers.isBlock(level.getBlockState(pos), TFCBlocks.BARREL_RACK.get()))
-            {
-                return state.setValue(FACING, context.getHorizontalDirection()).setValue(RACK, true);
-            }
-
-            // Require a supporting block below to be placing on.
+            // Require a supporting block below.
             if (!level.getBlockState(pos.below()).isFaceSturdy(level, pos.below(), Direction.UP, SupportType.CENTER))
             {
                 return null;
@@ -230,8 +170,7 @@ public class JugBlock extends SealableDeviceBlock
     @SuppressWarnings("deprecation")
     public BlockState rotate(BlockState state, Rotation rot)
     {
-        final Direction direction = rot.rotate(state.getValue(FACING));
-        return state.setValue(FACING, direction == Direction.DOWN ? Direction.UP: direction);
+        return state.setValue(FACING, rot.rotate(state.getValue(FACING)));
     }
 
     @Override
@@ -244,53 +183,13 @@ public class JugBlock extends SealableDeviceBlock
     @Override
     public VoxelShape getShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext context)
     {
-        final boolean rack = state.getValue(RACK);
-        return switch (state.getValue(FACING).getAxis())
-            {
-                case X -> rack ? SHAPE_X_RACK : SHAPE_X;
-                case Z -> rack ? SHAPE_Z_RACK : SHAPE_Z;
-                case Y -> super.getShape(state, level, pos, context);
-            };
-    }
-
-    @Override
-    public void onRemove(BlockState state, Level level, BlockPos pos, BlockState newState, boolean isMoving)
-    {
-        if (!(Helpers.isBlock(state, newState.getBlock())) && state.getValue(RACK) && !(newState.getBlock() instanceof BarrelRackBlock) && !isMoving)
-        {
-            Helpers.spawnItem(level, pos, new ItemStack(TFCBlocks.BARREL_RACK.get()));
-        }
-        super.onRemove(state, level, pos, newState, isMoving);
+        // Single collision shape, does not depend on FACING.
+        return SHAPE;
     }
 
     @Override
     protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder)
     {
-        super.createBlockStateDefinition(builder.add(FACING, RACK));
-    }
-
-    @Override
-    public boolean onDestroyedByPlayer(BlockState state, Level level, BlockPos pos, Player player, boolean willHarvest, FluidState fluid)
-    {
-        if (state.getValue(RACK))
-        {
-            // Replace with a jug rack, and drop + destroy the jug
-            playerWillDestroy(level, pos, state, player);
-            return level.setBlock(pos, TFCBlocks.BARREL_RACK.get().defaultBlockState(), level.isClientSide ? Block.UPDATE_ALL_IMMEDIATE : Block.UPDATE_ALL);
-        }
-        else
-        {
-            return super.onDestroyedByPlayer(state, level, pos, player, willHarvest, fluid);
-        }
-    }
-
-    @Override
-    @SuppressWarnings("deprecation")
-    public void neighborChanged(BlockState state, Level level, BlockPos pos, Block blockIn, BlockPos fromPos, boolean isMoving)
-    {
-        if (TFCConfig.SERVER.barrelEnableRedstoneSeal.get() && level.getBlockEntity(pos) instanceof LargeJugBlockEntity jug)
-        {
-            handleNeighborChanged(state, level, pos, jug::onSeal, jug::onUnseal);
-        }
+        super.createBlockStateDefinition(builder.add(FACING));
     }
 }
