@@ -28,7 +28,6 @@ import net.dries007.tfc.common.recipes.ingredients.FluidStackIngredient;
 import net.dries007.tfc.common.recipes.ingredients.ItemStackIngredient;
 import net.dries007.tfc.common.recipes.inventory.BarrelInventory;
 import net.dries007.tfc.common.recipes.outputs.ItemStackProvider;
-import net.dries007.tfc.config.TFCConfig;
 import net.dries007.tfc.util.Helpers;
 import net.dries007.tfc.util.JsonHelpers;
 
@@ -108,7 +107,7 @@ public class InstantFluidBarrelRecipe extends BarrelRecipe
             // Set the output fluid
             final FluidStack outputFluid = this.outputFluid.copy();
 
-            outputFluid.setAmount(Math.min(TFCConfig.SERVER.barrelCapacity.get(), outputFluid.getAmount() * multiplier));
+            outputFluid.setAmount(Math.min(inventory.getTankCapacity(0), outputFluid.getAmount() * multiplier));
             inventory.fill(outputFluid, IFluidHandler.FluidAction.EXECUTE);
 
             // Set the input item

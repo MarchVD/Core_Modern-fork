@@ -27,7 +27,6 @@ import net.dries007.tfc.common.recipes.ingredients.FluidStackIngredient;
 import net.dries007.tfc.common.recipes.ingredients.ItemStackIngredient;
 import net.dries007.tfc.common.recipes.inventory.BarrelInventory;
 import net.dries007.tfc.common.recipes.outputs.ItemStackProvider;
-import net.dries007.tfc.config.TFCConfig;
 import net.dries007.tfc.util.Helpers;
 import net.dries007.tfc.util.JsonHelpers;
 
@@ -77,7 +76,7 @@ public abstract class BarrelRecipe implements ISimpleRecipe<BarrelInventory>
             // Trim multiplier to a maximum fluid capacity of output
             if (!outputFluid.isEmpty())
             {
-                int capacity = TFCConfig.SERVER.barrelCapacity.get();
+                int capacity = inventory.getTankCapacity(0);
                 if (outputFluid.isFluidEqual(fluid))
                 {
                     capacity -= fluid.getAmount();
@@ -123,7 +122,7 @@ public abstract class BarrelRecipe implements ISimpleRecipe<BarrelInventory>
                 {
                     amount = amount + fluid.getAmount();
                 }
-                outputFluid.setAmount(Math.min(TFCConfig.SERVER.barrelCapacity.get(), amount));
+                outputFluid.setAmount(Math.min(inventory.getTankCapacity(0), amount));
                 inventory.fill(outputFluid, IFluidHandler.FluidAction.EXECUTE);
             }
         });
