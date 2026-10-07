@@ -4,7 +4,7 @@
  * https://joinup.ec.europa.eu/collection/eupl/eupl-text-eupl-12
  */
 
-package net.dries007.tfc.common.blocks.devices;
+package su.terrafirmagreg.core.common.block;
 
 import java.util.List;
 
@@ -42,13 +42,15 @@ import net.minecraftforge.common.Tags;
 import net.minecraftforge.fluids.capability.templates.FluidTank;
 import org.jetbrains.annotations.Nullable;
 
-import net.dries007.tfc.common.blockentities.LargeJugBlockEntity;
-import net.dries007.tfc.common.blockentities.TFCBlockEntities;
+import net.dries007.tfc.common.blocks.devices.SealableDeviceBlock;
+import net.dries007.tfc.common.blocks.devices.BottomSupportedDeviceBlock;
 import net.dries007.tfc.common.blocks.ExtendedProperties;
 import net.dries007.tfc.common.fluids.FluidHelpers;
-import net.dries007.tfc.config.TFCConfig;
 import net.dries007.tfc.util.Helpers;
 import net.dries007.tfc.util.Tooltips;
+
+import su.terrafirmagreg.core.common.blockentity.LargeJugBlockEntity;
+import su.terrafirmagreg.core.config.TFGConfig;
 
 public class LargeJugBlock extends SealableDeviceBlock
 {
@@ -76,7 +78,7 @@ public class LargeJugBlock extends SealableDeviceBlock
             }
         });
     }
-    
+
     private static final int[] IMAGE_TOOLTIP = {1, 1, 2, 2};
 
     public LargeJugBlock(ExtendedProperties properties)
@@ -92,7 +94,7 @@ public class LargeJugBlock extends SealableDeviceBlock
     @SuppressWarnings("deprecation")
     public InteractionResult use(BlockState state, Level level, BlockPos pos, Player player, InteractionHand hand, BlockHitResult hit)
     {
-        final LargeJugBlockEntity jug = level.getBlockEntity(pos, TFCBlockEntities.LARGE_JUG.get()).orElse(null);
+        final LargeJugBlockEntity jug = level.getBlockEntity(pos, getExtendedProperties().blockEntity()).orElse(null);
         if (jug != null)
         {
             final ItemStack stack = player.getItemInHand(hand);
@@ -118,7 +120,7 @@ public class LargeJugBlock extends SealableDeviceBlock
     @Override
     protected void addExtraInfo(List<Component> tooltip, CompoundTag inventoryTag)
     {
-        final FluidTank tank = new FluidTank(TFCConfig.SERVER.largeJugCapacity.get());
+        final FluidTank tank = new FluidTank(TFGConfig.SERVER.largeJugCapacity.get());
         tank.readFromNBT(inventoryTag.getCompound("tank"));
         if (!tank.isEmpty())
         {

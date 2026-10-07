@@ -4,7 +4,7 @@
  * https://joinup.ec.europa.eu/collection/eupl/eupl-text-eupl-12
  */
 
-package net.dries007.tfc.common.blockentities;
+package su.terrafirmagreg.core.common.blockentity;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -31,7 +31,10 @@ import org.jetbrains.annotations.Nullable;
 
 import net.dries007.tfc.client.TFCSounds;
 import net.dries007.tfc.common.TFCTags;
-import net.dries007.tfc.common.blocks.devices.LargeJugBlock;
+import net.dries007.tfc.common.blockentities.BarrelInventoryCallback;
+import net.dries007.tfc.common.blockentities.IRecipeTimer;
+import net.dries007.tfc.common.blockentities.InventoryBlockEntity;
+import net.dries007.tfc.common.blockentities.TickableInventoryBlockEntity;
 import net.dries007.tfc.common.capabilities.Capabilities;
 import net.dries007.tfc.common.capabilities.DelegateFluidHandler;
 import net.dries007.tfc.common.capabilities.DelegateItemHandler;
@@ -44,17 +47,21 @@ import net.dries007.tfc.common.capabilities.size.IItemSize;
 import net.dries007.tfc.common.capabilities.size.ItemSizeManager;
 import net.dries007.tfc.common.capabilities.size.Size;
 import net.dries007.tfc.common.capabilities.size.Weight;
-import net.dries007.tfc.common.container.LargeJugContainer;
 import net.dries007.tfc.common.fluids.FluidHelpers;
 import net.dries007.tfc.common.recipes.BarrelRecipe;
 import net.dries007.tfc.common.recipes.SealedBarrelRecipe;
 import net.dries007.tfc.common.recipes.TFCRecipeTypes;
 import net.dries007.tfc.common.recipes.inventory.EmptyInventory;
-import net.dries007.tfc.config.TFCConfig;
 import net.dries007.tfc.util.Helpers;
 import net.dries007.tfc.util.calendar.CalendarTransaction;
 import net.dries007.tfc.util.calendar.Calendars;
 import net.dries007.tfc.util.calendar.ICalendarTickable;
+
+import su.terrafirmagreg.core.TFGCore;
+import su.terrafirmagreg.core.common.block.LargeJugBlock;
+import su.terrafirmagreg.core.common.container.LargeJugContainer;
+import su.terrafirmagreg.core.common.data.TFGBlockEntities;
+import su.terrafirmagreg.core.config.TFGConfig;
 
 public class LargeJugBlockEntity extends TickableInventoryBlockEntity<LargeJugBlockEntity.JugInventory> implements ICalendarTickable, BarrelInventoryCallback, IRecipeTimer
 {
@@ -63,7 +70,7 @@ public class LargeJugBlockEntity extends TickableInventoryBlockEntity<LargeJugBl
     public static final int SLOT_ITEM = 2;
     public static final int SLOTS = 3;
 
-    private static final Component NAME = Component.translatable("tfc.block_entity.large_jug");
+    private static final Component NAME = Component.translatable(TFGCore.MOD_ID + ".block_entity.large_jug");
 
     public static void serverTick(Level level, BlockPos pos, BlockState state, LargeJugBlockEntity jug)
     {
@@ -156,7 +163,7 @@ public class LargeJugBlockEntity extends TickableInventoryBlockEntity<LargeJugBl
 
     public LargeJugBlockEntity(BlockPos pos, BlockState state)
     {
-        super(TFCBlockEntities.LARGE_JUG.get(), pos, state, JugInventory::new, NAME);
+        super(TFGBlockEntities.LARGE_JUG.get(), pos, state, JugInventory::new, NAME);
     }
 
     @Nullable
@@ -475,7 +482,7 @@ public class LargeJugBlockEntity extends TickableInventoryBlockEntity<LargeJugBl
             this.callback = callback;
             inventory = new InventoryItemHandler(callback, SLOTS);
             excess = new ArrayList<>();
-            tank = new InventoryFluidTank(Helpers.getValueOrDefault(TFCConfig.SERVER.largeJugCapacity), stack -> Helpers.isFluid(stack.getFluid(), TFCTags.Fluids.USABLE_IN_BARREL), this);
+            tank = new InventoryFluidTank(Helpers.getValueOrDefault(TFGConfig.SERVER.largeJugCapacity), stack -> Helpers.isFluid(stack.getFluid(), TFCTags.Fluids.USABLE_IN_BARREL), this);
         }
 
         @Override
